@@ -1,6 +1,14 @@
 sudo: required
 dist: xenial
 
+arch:
+  - amd64
+  - arm64
+
+compiler:
+  - gcc
+  - clang
+
 language: cpp
 cache:
   - ccache
@@ -12,7 +20,7 @@ addons:
     packages:
       - cmake
       - valgrind
-      - clang-8
+
 env:
   global:
     - USE_CCACHE=1
@@ -24,90 +32,35 @@ env:
     - ARCH_FLAGS_aarch64='-march=armv8-a'
     - GITHUB_REPO='Tencent/rapidjson'
     - secure: "HrsaCb+N66EG1HR+LWH1u51SjaJyRwJEDzqJGYMB7LJ/bfqb9mWKF1fLvZGk46W5t7TVaXRDD5KHFx9DPWvKn4gRUVkwTHEy262ah5ORh8M6n/6VVVajeV/AYt2C0sswdkDBDO4Xq+xy5gdw3G8s1A4Inbm73pUh+6vx+7ltBbk="
+  jobs:
+    - CONF=release CXX11=ON CPUWIDTH=32
+    - CONF=release CXX11=ON CPUWIDTH=64
+    - CONF=debug CXX11=OFF CPUWIDTH=32
+    - CONF=debug CXX11=OFF CPUWIDTH=64
+    - CONF=debug CXX11=ON CPUWIDTH=32
+    - CONF=debug CXX11=ON CPUWIDTH=64
 
-matrix:
+jobs:
+  exclude:
+    - env: CONF=release CXX11=ON CPUWIDTH=32
+      arch: arm64
+    - env: CONF=debug CXX11=OFF CPUWIDTH=32
+      arch: arm64
+    - env: CONF=debug CXX11=ON CPUWIDTH=32
+      arch: arm64
+    - env: CONF=debug CXX11=ON CPUWIDTH=32
+      compiler: gcc
+    - env: CONF=debug CXX11=ON CPUWIDTH=64
+      compiler: gcc
   include:
-    # gcc
-    - env: CONF=release ARCH=x86    CXX11=ON
-      compiler: gcc
-      arch: amd64
-    - env: CONF=release ARCH=x86_64 CXX11=ON
-      compiler: gcc
-      arch: amd64
-    - env: CONF=debug   ARCH=x86    CXX11=OFF
-      compiler: gcc
-      arch: amd64
-    - env: CONF=debug   ARCH=x86_64 CXX11=OFF
-      compiler: gcc
-      arch: amd64
-    - env: CONF=release ARCH=aarch64 CXX11=ON
-      compiler: gcc
-      arch: arm64
-    - env: CONF=debug   ARCH=aarch64 CXX11=OFF
-      compiler: gcc
-      arch: arm64
-    # clang
-    - env: CONF=debug   ARCH=x86    CXX11=ON CCACHE_CPP2=yes
-      compiler: clang
-      arch: amd64
-    - env: CONF=debug   ARCH=x86_64 CXX11=ON CCACHE_CPP2=yes
-      compiler: clang
-      arch: amd64
-    - env: CONF=debug   ARCH=x86    CXX11=OFF CCACHE_CPP2=yes
-      compiler: clang
-      arch: amd64
-    - env: CONF=debug   ARCH=x86_64 CXX11=OFF CCACHE_CPP2=yes
-      compiler: clang
-      arch: amd64
-    - env: CONF=release ARCH=x86    CXX11=ON CCACHE_CPP2=yes
-      compiler: clang
-      arch: amd64
-    - env: CONF=release ARCH=x86_64 CXX11=ON CCACHE_CPP2=yes
-      compiler: clang
-      arch: amd64
-    - env: CONF=debug   ARCH=aarch64 CXX11=ON CCACHE_CPP2=yes
-      compiler: clang
-      arch: arm64
-    - env: CONF=debug   ARCH=aarch64 CXX11=OFF CCACHE_CPP2=yes
-      compiler: clang
-      arch: arm64
-    # coverage report
     - env: CONF=debug   ARCH=x86    CXX11=ON GCOV_FLAGS='--coverage'
       compiler: gcc
-      arch: amd64
       cache:
-        - ccache
+        - ccahe
         - pip
       after_success:
         - pip install --user cpp-coveralls
         - coveralls -r .. --gcov-options '\-lp' -e thirdparty -e example -e test -e build/CMakeFiles -e include/rapidjson/msinttypes -e include/rapidjson/internal/meta.h -e include/rapidjson/error/en.h
-    - env: CONF=debug   ARCH=x86_64 GCOV_FLAGS='--coverage'
-      compiler: gcc
-      arch: amd64
-      cache:
-        - ccache
-        - pip
-      after_success:
-        - pip install --user cpp-coveralls
-        - coveralls -r .. --gcov-options '\-lp' -e thirdparty -e example -e test -e build/CMakeFiles -e include/rapidjson/msinttypes -e include/rapidjson/internal/meta.h -e include/rapidjson/error/en.h
-    - env: CONF=debug   ARCH=aarch64 GCOV_FLAGS='--coverage'
-      compiler: gcc
-      arch: arm64
-      cache:
-        - ccache
-        - pip
-      after_success:
-        - pip install --user cpp-coveralls
-        - coveralls -r .. --gcov-options '\-lp' -e thirdparty -e example -e test -e build/CMakeFiles -e include/rapidjson/msinttypes -e include/rapidjson/internal/meta.h -e include/rapidjson/error/en.h
-    - script: # Documentation task
-      - cd build
-      - cmake .. -DRAPIDJSON_HAS_STDSTRING=ON -DCMAKE_VERBOSE_MAKEFILE=ON
-      - make travis_doc
-      cache: false
-      addons:
-        apt:
-          packages:
-            - doxygen
 
 before_install:
   - if [ "x86_64" = "$(arch)" ]; then sudo apt-get install -y g++-multilib libc6-dbg:i386 --allow-unauthenticated; fi
